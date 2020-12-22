@@ -1,0 +1,63 @@
+version: '3'
+services:
+  postgres:
+    image: "postgres:latest"
+    # For Postgres issues:
+    # "Error: Database is uninitialized and superuser password is not specified."
+    environment:
+      - POSTGRES_PASSWORD=postgres_password
+  redis:
+    image: 'redis:latest'
+  nginx:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports:
+      - '3050:80'
+    # Mindenképpen futnia kell az nginx-nek
+    restart: always
+    # For Nginx issue:
+    # "host not found in upstream "client:3000""
+    depends_on:
+      - api
+      - client
+  api:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./server
+    volumes:
+      - /app/node_modules
+      - ./server:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PGUSER=postgres
+      - PGHOST=postgres
+      - PGDATABASE=postgres
+      - PGPASSWORD=postgres_password
+      - PGPORT=5432
+  client:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    volumes:
+      - /app/node_modules
+      - ./client:/app
+    # For React.js issues:
+    # "React App exited with Code 0"
+    stdin_open: true
+    # For hot-reloading issues in React.js:
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+  worker:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+    # For Redis issues:
+    # "Calculated Nothing Yet"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
